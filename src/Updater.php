@@ -81,15 +81,15 @@ class Updater {
 	 *
 	 * @param string $repo_slug    GitHub repository slug in "username/repository" format.
 	 * @param string $plugin_file  Absolute path to the plugin main file.
-	 * @param string $access_token Optional GitHub personal access token.
 	 * @param string $slug         Optional update slug. Use when plugin directory name differs from desired slug (e.g. repo name).
+	 * @param string $access_token Optional GitHub personal access token.
 	 */
-	public function __construct( $repo_slug, $plugin_file, $access_token = '', $slug = '' ) {
+	public function __construct( $repo_slug, $plugin_file, $slug = '', $access_token = '' ) {
 		$this->repo_slug    = $repo_slug;
 		$this->plugin_file  = $plugin_file;
+		$this->slug         = $slug;
 		$this->access_token = $access_token;
 		$this->plugin_slug  = plugin_basename( $plugin_file );
-		$this->slug        = $slug;
 	}
 
 	/**

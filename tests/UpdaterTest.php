@@ -301,7 +301,7 @@ class UpdaterTest extends TestCase {
 			'https://api.github.com/repos/acme/my-plugin/zipball/v2.0.0'
 		);
 
-		$updater   = new Updater( $this->repo_slug, $this->plugin_file, 'test-token-123' );
+		$updater   = new Updater( $this->repo_slug, $this->plugin_file, '', 'test-token-123' );
 		$transient = (object) array(
 			'checked'  => array( 'my-plugin/my-plugin.php' => '1.0.0' ),
 			'response' => array(),
@@ -424,7 +424,7 @@ class UpdaterTest extends TestCase {
 			'https://api.github.com/repos/acme/my-plugin/zipball/v2.0.0'
 		);
 
-		$updater   = new Updater( $this->repo_slug, $this->plugin_file, '', 'custom-update-slug' );
+		$updater   = new Updater( $this->repo_slug, $this->plugin_file, 'custom-update-slug' );
 		$transient = (object) array(
 			'checked'  => array( 'my-plugin/my-plugin.php' => '1.0.0' ),
 			'response' => array(),
@@ -447,7 +447,7 @@ class UpdaterTest extends TestCase {
 			'https://api.github.com/repos/acme/my-plugin/zipball/v2.0.0'
 		);
 
-		$updater = new Updater( $this->repo_slug, $this->plugin_file, '', 'custom-update-slug' );
+		$updater = new Updater( $this->repo_slug, $this->plugin_file, 'custom-update-slug' );
 		$args    = (object) array( 'slug' => 'custom-update-slug' );
 
 		$result = $updater->plugin_info( false, 'plugin_information', $args );
@@ -461,7 +461,7 @@ class UpdaterTest extends TestCase {
 	 * @test
 	 */
 	public function plugin_info_does_not_match_derived_slug_when_custom_slug_is_set() {
-		$updater  = new Updater( $this->repo_slug, $this->plugin_file, '', 'custom-update-slug' );
+		$updater  = new Updater( $this->repo_slug, $this->plugin_file, 'custom-update-slug' );
 		$original = new stdClass();
 		$args     = (object) array( 'slug' => 'my-plugin' );
 
@@ -480,7 +480,7 @@ class UpdaterTest extends TestCase {
 			'https://api.github.com/repos/acme/my-plugin/zipball/v2.0.0'
 		);
 
-		$updater   = new Updater( $this->repo_slug, $this->plugin_file, 'test-token', 'my-custom-slug' );
+		$updater   = new Updater( $this->repo_slug, $this->plugin_file, 'my-custom-slug', 'test-token' );
 		$transient = (object) array(
 			'checked'  => array( 'my-plugin/my-plugin.php' => '1.0.0' ),
 			'response' => array(),
