@@ -43,15 +43,43 @@ $updater = new Updater(
 $updater->init();
 ```
 
+### Optional: Custom update slug
+
+When your plugin’s directory name is not the same as the slug you want for
+updates (e.g. you want the slug to match the repo name), pass it as the
+third argument:
+
+```php
+$updater = new Updater(
+    'your-github-user/your-repo-name',
+    __FILE__,
+    'your-repo-name'    // Update slug used in update checks and "View details".
+);
+$updater->init();
+```
+
 ### Optional: GitHub personal access token
 
-Pass a personal access token as the third argument to raise the GitHub API
+Pass a personal access token as the fourth argument to raise the GitHub API
 rate limit (useful on high-traffic sites):
 
 ```php
 $updater = new Updater(
     'your-github-user/your-repo-name',
     __FILE__,
+    '',                             // No custom slug.
+    'ghp_your_personal_access_token'
+);
+$updater->init();
+```
+
+With a custom slug and a token:
+
+```php
+$updater = new Updater(
+    'your-github-user/your-repo-name',
+    __FILE__,
+    'your-repo-name',
     'ghp_your_personal_access_token'
 );
 $updater->init();
@@ -74,14 +102,6 @@ $updater->init();
    - The auto-generated **zipball** URL provided by GitHub.
 5. The `plugins_api` filter is also handled so that the "View details"
    overlay in the WordPress admin shows release information.
-
----
-
-## Namespace
-
-```
-Nilambar\Gitvise
-```
 
 ---
 

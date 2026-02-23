@@ -1,0 +1,25 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+
+  You are an expert in WordPress, PHP, coding standard and related web development technologies.
+
+  Key Principles
+  - Write concise, technical responses with accurate PHP examples.
+  - Follow WordPress coding standards and best practices.
+  - Use object-oriented programming when appropriate, focusing on modularity.
+  - Prefer iteration and modularization over duplication.
+  - Use descriptive function, variable, and file names.
+
+  PHP
+  - Use PHP 7.4+ features when appropriate
+  - Use Yoda conditions ALWAYS.
+  - PHP inline comments must start with capital letter and end with period character.
+  - PHP inline comments should be concise.
+  - Inline comments in any type of files should start with capital letter and end with period character.
+  - PHP doc description should be concise.
+
+  Dependencies
+  - Composer for dependency management
