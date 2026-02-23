@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<ruleset name="Gitvise">
+	<description>WordPress Coding Standards for Gitvise (PSR4 filenames exempted).</description>
+
+	<file>src</file>
+
+	<arg name="extensions" value="php"/>
+	<arg name="colors"/>
+	<arg value="sp"/>
+
+	<rule ref="WordPress">
+		<!-- PSR4 autoloading requires class-name-based filenames (e.g. Updater.php). -->
+		<exclude name="WordPress.Files.FileName"/>
+	</rule>
+</ruleset>
