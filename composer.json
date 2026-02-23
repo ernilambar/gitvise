@@ -22,6 +22,7 @@
 		}
 	},
 	"scripts": {
-		"phpcs": "phpcs"
+		"phpcs": "phpcs",
+		"test": "phpunit"
 	}
 }
