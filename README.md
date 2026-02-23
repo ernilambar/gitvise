@@ -57,6 +57,34 @@ $updater = new Updater(
 $updater->init();
 ```
 
+### Optional: Custom update slug
+
+When your plugin’s directory name is not the same as the slug you want for
+updates (e.g. you want the slug to match the repo name), pass it as the
+fourth argument:
+
+```php
+$updater = new Updater(
+    'your-github-user/your-repo-name',
+    __FILE__,
+    '',                  // No token.
+    'your-repo-name'     // Update slug used in update checks and "View details".
+);
+$updater->init();
+```
+
+With a token and a custom slug:
+
+```php
+$updater = new Updater(
+    'your-github-user/your-repo-name',
+    __FILE__,
+    'ghp_your_personal_access_token',
+    'your-repo-name'
+);
+$updater->init();
+```
+
 ---
 
 ## How it works

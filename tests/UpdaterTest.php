@@ -409,4 +409,86 @@ class UpdaterTest extends TestCase {
 
 		$this->assertSame( $asset_url, $result->download_link );
 	}
+
+	// -------------------------------------------------------------------------
+	// Optional slug (4th constructor argument).
+	// -------------------------------------------------------------------------
+
+	/**
+	 * @test
+	 */
+	public function check_update_uses_custom_slug_in_response_when_provided() {
+		$GLOBALS['wp_remote_get_response'] = $this->make_release_response(
+			'v2.0.0',
+			array(),
+			'https://api.github.com/repos/acme/my-plugin/zipball/v2.0.0'
+		);
+
+		$updater   = new Updater( $this->repo_slug, $this->plugin_file, '', 'custom-update-slug' );
+		$transient = (object) array(
+			'checked'  => array( 'my-plugin/my-plugin.php' => '1.0.0' ),
+			'response' => array(),
+		);
+
+		$result = $updater->check_update( $transient );
+
+		$this->assertArrayHasKey( 'my-plugin/my-plugin.php', $result->response );
+		$this->assertSame( 'custom-update-slug', $result->response['my-plugin/my-plugin.php']->slug );
+		$this->assertSame( 'my-plugin/my-plugin.php', $result->response['my-plugin/my-plugin.php']->plugin );
+	}
+
+	/**
+	 * @test
+	 */
+	public function plugin_info_matches_custom_slug_when_provided() {
+		$GLOBALS['wp_remote_get_response'] = $this->make_release_response(
+			'v2.0.0',
+			array(),
+			'https://api.github.com/repos/acme/my-plugin/zipball/v2.0.0'
+		);
+
+		$updater = new Updater( $this->repo_slug, $this->plugin_file, '', 'custom-update-slug' );
+		$args    = (object) array( 'slug' => 'custom-update-slug' );
+
+		$result = $updater->plugin_info( false, 'plugin_information', $args );
+
+		$this->assertIsObject( $result );
+		$this->assertSame( 'custom-update-slug', $result->slug );
+		$this->assertSame( '2.0.0', $result->version );
+	}
+
+	/**
+	 * @test
+	 */
+	public function plugin_info_does_not_match_derived_slug_when_custom_slug_is_set() {
+		$updater  = new Updater( $this->repo_slug, $this->plugin_file, '', 'custom-update-slug' );
+		$original = new stdClass();
+		$args     = (object) array( 'slug' => 'my-plugin' );
+
+		$result = $updater->plugin_info( $original, 'plugin_information', $args );
+
+		$this->assertSame( $original, $result );
+	}
+
+	/**
+	 * @test
+	 */
+	public function constructor_accepts_token_and_slug_together() {
+		$GLOBALS['wp_remote_get_response'] = $this->make_release_response(
+			'v2.0.0',
+			array(),
+			'https://api.github.com/repos/acme/my-plugin/zipball/v2.0.0'
+		);
+
+		$updater   = new Updater( $this->repo_slug, $this->plugin_file, 'test-token', 'my-custom-slug' );
+		$transient = (object) array(
+			'checked'  => array( 'my-plugin/my-plugin.php' => '1.0.0' ),
+			'response' => array(),
+		);
+
+		$result = $updater->check_update( $transient );
+
+		$this->assertArrayHasKey( 'my-plugin/my-plugin.php', $result->response );
+		$this->assertSame( 'my-custom-slug', $result->response['my-plugin/my-plugin.php']->slug );
+	}
 }
