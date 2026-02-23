@@ -19,20 +19,12 @@ namespace Nilambar\Gitvise;
 class Updater {
 
 	/**
-	 * GitHub username (or organization).
+	 * GitHub repository slug in "username/repository" format.
 	 *
 	 * @since 1.0.0
 	 * @var string
 	 */
-	private $username;
-
-	/**
-	 * GitHub repository name.
-	 *
-	 * @since 1.0.0
-	 * @var string
-	 */
-	private $repository;
+	private $repo_slug;
 
 	/**
 	 * Absolute path to the plugin main file.
@@ -49,14 +41,6 @@ class Updater {
 	 * @var string
 	 */
 	private $plugin_slug;
-
-	/**
-	 * Currently installed plugin version.
-	 *
-	 * @since 1.0.0
-	 * @var string
-	 */
-	private $version;
 
 	/**
 	 * HTTP request timeout in seconds.
@@ -87,17 +71,13 @@ class Updater {
 	 *
 	 * @since 1.0.0
 	 *
+	 * @param string $repo_slug    GitHub repository slug in "username/repository" format.
 	 * @param string $plugin_file  Absolute path to the plugin main file.
-	 * @param string $username     GitHub username or organization.
-	 * @param string $repository   GitHub repository name.
-	 * @param string $version      Currently installed plugin version.
 	 * @param string $access_token Optional GitHub personal access token.
 	 */
-	public function __construct( $plugin_file, $username, $repository, $version, $access_token = '' ) {
+	public function __construct( $repo_slug, $plugin_file, $access_token = '' ) {
+		$this->repo_slug    = $repo_slug;
 		$this->plugin_file  = $plugin_file;
-		$this->username     = $username;
-		$this->repository   = $repository;
-		$this->version      = $version;
 		$this->access_token = $access_token;
 		$this->plugin_slug  = plugin_basename( $plugin_file );
 	}
@@ -122,11 +102,7 @@ class Updater {
 	 * @return string GitHub REST API URL.
 	 */
 	private function get_api_url() {
-		return sprintf(
-			'https://api.github.com/repos/%s/%s/releases/latest',
-			rawurlencode( $this->username ),
-			rawurlencode( $this->repository )
-		);
+		return 'https://api.github.com/repos/' . $this->repo_slug . '/releases/latest';
 	}
 
 	/**
@@ -224,25 +200,14 @@ class Updater {
 	}
 
 	/**
-	 * Derive the update slug from the plugin slug.
-	 *
-	 * For plugins that live in their own subdirectory (the normal case) this is
-	 * just the directory name.  For single-file plugins installed directly in
-	 * wp-content/plugins/ the directory component would be ".", so we fall back
-	 * to the filename without its extension.
+	 * Derive the update slug from the plugin slug (the subdirectory name).
 	 *
 	 * @since 1.0.0
 	 *
 	 * @return string Update slug.
 	 */
 	private function get_update_slug() {
-		$dir = dirname( $this->plugin_slug );
-
-		if ( '.' === $dir ) {
-			return basename( $this->plugin_slug, '.php' );
-		}
-
-		return $dir;
+		return dirname( $this->plugin_slug );
 	}
 
 	/**
@@ -260,6 +225,10 @@ class Updater {
 			return $transient;
 		}
 
+		$installed_version = isset( $transient->checked[ $this->plugin_slug ] )
+			? $transient->checked[ $this->plugin_slug ]
+			: '';
+
 		$release = $this->get_release_data();
 
 		if ( false === $release ) {
@@ -273,12 +242,12 @@ class Updater {
 			return $transient;
 		}
 
-		if ( version_compare( $this->version, $remote_version, '<' ) ) {
+		if ( version_compare( $installed_version, $remote_version, '<' ) ) {
 			$update = array(
 				'slug'        => $this->get_update_slug(),
 				'plugin'      => $this->plugin_slug,
 				'new_version' => $remote_version,
-				'url'         => sprintf( 'https://github.com/%s/%s', $this->username, $this->repository ),
+				'url'         => 'https://github.com/' . $this->repo_slug,
 				'package'     => $download_url,
 			);
 
@@ -326,8 +295,8 @@ class Updater {
 			'name'          => $args->slug,
 			'slug'          => $args->slug,
 			'version'       => $remote_version,
-			'author'        => $this->username,
-			'homepage'      => sprintf( 'https://github.com/%s/%s', $this->username, $this->repository ),
+			'author'        => explode( '/', $this->repo_slug )[0],
+			'homepage'      => 'https://github.com/' . $this->repo_slug,
 			'download_link' => $download_url,
 			'sections'      => array(
 				'description' => isset( $release['body'] ) ? $release['body'] : '',

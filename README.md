@@ -37,25 +37,21 @@ require_once __DIR__ . '/vendor/autoload.php';
 use Nilambar\Gitvise\Updater;
 
 $updater = new Updater(
-    __FILE__,          // Absolute path to the plugin main file.
-    'your-github-user', // GitHub username or organization.
-    'your-repo-name',  // GitHub repository name.
-    '1.0.0'            // Currently installed plugin version.
+    'your-github-user/your-repo-name', // GitHub repository slug ("username/repository").
+    __FILE__                           // Absolute path to the plugin main file.
 );
 $updater->init();
 ```
 
 ### Optional: GitHub personal access token
 
-Pass a personal access token as the fifth argument to raise the GitHub API
+Pass a personal access token as the third argument to raise the GitHub API
 rate limit (useful on high-traffic sites):
 
 ```php
 $updater = new Updater(
+    'your-github-user/your-repo-name',
     __FILE__,
-    'your-github-user',
-    'your-repo-name',
-    '1.0.0',
     'ghp_your_personal_access_token'
 );
 $updater->init();
@@ -69,7 +65,8 @@ $updater->init();
    the library queries the GitHub REST API for the latest release of the
    configured repository.
 2. The release tag (e.g. `v1.2.3` → `1.2.3`) is compared against the
-   currently installed version.
+   currently installed version, which is read automatically from the WordPress
+   update transient (no need to pass it manually).
 3. When a newer version is found, the update transient is populated with the
    download URL, which WordPress uses to install the update.
 4. The download URL is resolved in the following order:
