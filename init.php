@@ -30,7 +30,7 @@ if ( ! defined( 'GITVISE_VERSION' ) ) {
 function gitvise_get_package_version( $package_root ) {
 	$installed_file = $package_root . '/../composer/installed.json';
 	if ( is_readable( $installed_file ) ) {
-		$json = file_get_contents( $installed_file );
+		$json = file_get_contents( $installed_file ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
 		$data = json_decode( $json, true );
 		if ( isset( $data['packages'] ) && is_array( $data['packages'] ) ) {
 			foreach ( $data['packages'] as $pkg ) {
@@ -104,16 +104,16 @@ function gitvise_resolve_winner_root() {
 /**
  * PSR-4 autoloader for Nilambar\Gitvise namespace; loads from the resolved winner path.
  *
- * @param string $class Fully qualified class name.
+ * @param string $class_name Fully qualified class name.
  * @return void
  */
-function gitvise_autoload( $class ) {
+function gitvise_autoload( $class_name ) {
 	$prefix = 'Nilambar\\Gitvise\\';
-	if ( 0 !== strpos( $class, $prefix ) ) {
+	if ( 0 !== strpos( $class_name, $prefix ) ) {
 		return;
 	}
 
-	$relative = substr( $class, strlen( $prefix ) );
+	$relative = substr( $class_name, strlen( $prefix ) );
 	$file     = str_replace( '\\', '/', $relative ) . '.php';
 	$root     = gitvise_resolve_winner_root();
 	$path     = $root . '/src/' . $file;
