@@ -95,3 +95,4 @@ function wp_remote_retrieve_response_code( $response ) {
 function wp_remote_retrieve_body( $response ) {
 	return isset( $response['body'] ) ? (string) $response['body'] : '';
 }
+

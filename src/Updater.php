@@ -212,6 +212,32 @@ if ( ! class_exists( \Nilambar\Gitvise\Updater::class ) ) {
 		}
 
 		/**
+		 * Get plugin header data from the main plugin file.
+		 *
+		 * Used to populate name, description, and author in the "View details" popup.
+		 *
+		 * @since 1.0.0
+		 *
+		 * @return array Plugin header data, or empty array if not available.
+		 */
+		private function get_plugin_header_data() {
+			if ( ! function_exists( 'get_plugin_data' ) ) {
+				if ( ! defined( 'ABSPATH' ) || ! is_file( ABSPATH . 'wp-admin/includes/plugin.php' ) ) {
+					return array();
+				}
+				require_once ABSPATH . 'wp-admin/includes/plugin.php';
+			}
+
+			if ( ! is_readable( $this->plugin_file ) ) {
+				return array();
+			}
+
+			$data = get_plugin_data( $this->plugin_file, false, false );
+
+			return is_array( $data ) ? $data : array();
+		}
+
+		/**
 		 * Return the update slug. Uses optional slug when set; otherwise derived from plugin path (subdirectory name).
 		 *
 		 * @since 1.0.0
@@ -306,17 +332,28 @@ if ( ! class_exists( \Nilambar\Gitvise\Updater::class ) ) {
 				return $result;
 			}
 
+			$plugin_data = $this->get_plugin_header_data();
+			$github_url  = 'https://github.com/' . $this->repo_slug;
+
+			$description_content = isset( $release['body'] ) && '' !== trim( (string) $release['body'] )
+				? $release['body']
+				: ( isset( $plugin_data['Description'] ) ? $plugin_data['Description'] : '' );
+
 			$info = array(
-				'name'          => $args->slug,
+				'name'          => isset( $plugin_data['Name'] ) ? $plugin_data['Name'] : $args->slug,
 				'slug'          => $args->slug,
 				'version'       => $remote_version,
-				'author'        => explode( '/', $this->repo_slug )[0],
-				'homepage'      => 'https://github.com/' . $this->repo_slug,
+				'author'        => isset( $plugin_data['Author'] ) ? $plugin_data['Author'] : explode( '/', $this->repo_slug )[0],
+				'homepage'      => isset( $plugin_data['PluginURI'] ) && '' !== $plugin_data['PluginURI'] ? $plugin_data['PluginURI'] : $github_url,
 				'download_link' => $download_url,
 				'sections'      => array(
-					'description' => isset( $release['body'] ) ? $release['body'] : '',
+					'description' => $description_content,
 				),
 			);
+
+			if ( ! empty( $plugin_data['Description'] ) ) {
+				$info['short_description'] = $plugin_data['Description'];
+			}
 
 			return (object) $info;
 		}
