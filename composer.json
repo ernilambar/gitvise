@@ -1,7 +1,7 @@
 {
 	"name": "ernilambar/gitvise",
 	"description": "WordPress plugin updater from GitHub releases",
-	"license": "GPL-2.0-or-later",
+	"license": "MIT",
 	"type": "library",
 	"require": {
 		"php": ">=7.4"
