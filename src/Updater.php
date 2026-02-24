@@ -7,6 +7,8 @@
 
 namespace Nilambar\Gitvise;
 
+if ( ! class_exists( \Nilambar\Gitvise\Updater::class ) ) {
+
 /**
  * Updater class.
  *
@@ -318,4 +320,6 @@ class Updater {
 
 		return (object) $info;
 	}
+}
+
 }
