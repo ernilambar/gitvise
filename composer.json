@@ -1,20 +1,20 @@
 {
-	"name": "nilambar/gitvise",
+	"name": "ernilambar/gitvise",
 	"description": "WordPress plugin updater from GitHub releases",
-	"type": "library",
 	"license": "GPL-2.0-or-later",
+	"type": "library",
 	"require": {
 		"php": ">=7.4"
-	},
-	"autoload": {
-		"psr-4": {
-			"Nilambar\\Gitvise\\": "src/"
-		}
 	},
 	"require-dev": {
 		"phpunit/phpunit": "^9.0 || ^10.0",
 		"squizlabs/php_codesniffer": "^3.0",
 		"wp-coding-standards/wpcs": "^3.0"
+	},
+	"autoload": {
+		"psr-4": {
+			"Nilambar\\Gitvise\\": "src/"
+		}
 	},
 	"config": {
 		"allow-plugins": {
@@ -22,7 +22,8 @@
 		}
 	},
 	"scripts": {
-		"phpcs": "phpcs",
+		"format": "@php ./vendor/bin/phpcbf --report-full --report-summary .",
+		"lint": "@php ./vendor/bin/phpcs --report-full --report-summary .",
 		"test": "phpunit"
 	}
 }
