@@ -43,22 +43,34 @@ class UpdaterTest extends TestCase {
 	/**
 	 * Build a fake 200 OK GitHub API response.
 	 *
-	 * @param string $tag_name    Release tag (e.g. "v2.0.0").
-	 * @param array  $assets      Optional release assets array.
-	 * @param string $zipball_url Optional zipball URL.
+	 * @param string $tag_name Release tag (e.g. "v2.0.0").
+	 * @param array  $assets   Optional release assets array.
 	 * @return array
 	 */
-	private function make_release_response( $tag_name, $assets = array(), $zipball_url = '' ) {
+	private function make_release_response( $tag_name, $assets = array() ) {
 		return array(
 			'response' => array( 'code' => 200 ),
 			'body'     => json_encode(
 				array(
-					'tag_name'    => $tag_name,
-					'body'        => 'Release notes for ' . $tag_name,
-					'zipball_url' => $zipball_url,
-					'assets'      => $assets,
+					'tag_name' => $tag_name,
+					'body'     => 'Release notes for ' . $tag_name,
+					'assets'   => $assets,
 				)
 			),
+		);
+	}
+
+	/**
+	 * Build a release asset entry for a ZIP file.
+	 *
+	 * @param string $name Asset filename (e.g. "my-plugin-2.0.0.zip").
+	 * @param string $url  Optional download URL; derived from the name when omitted.
+	 * @return array
+	 */
+	private function zip_asset( $name, $url = '' ) {
+		return array(
+			'name'                 => $name,
+			'browser_download_url' => '' !== $url ? $url : 'https://github.com/acme/my-plugin/releases/download/v2.0.0/' . $name,
 		);
 	}
 
@@ -122,8 +134,7 @@ class UpdaterTest extends TestCase {
 	public function check_update_returns_transient_unchanged_when_same_version() {
 		$GLOBALS['wp_remote_get_response'] = $this->make_release_response(
 			'v1.0.0',
-			array(),
-			'https://api.github.com/repos/acme/my-plugin/zipball/v1.0.0'
+			array( $this->zip_asset( 'my-plugin.zip' ) )
 		);
 
 		$updater   = new Updater( $this->repo_slug, $this->plugin_file );
@@ -143,8 +154,7 @@ class UpdaterTest extends TestCase {
 	public function check_update_returns_transient_unchanged_when_installed_is_newer() {
 		$GLOBALS['wp_remote_get_response'] = $this->make_release_response(
 			'v1.0.0',
-			array(),
-			'https://api.github.com/repos/acme/my-plugin/zipball/v1.0.0'
+			array( $this->zip_asset( 'my-plugin.zip' ) )
 		);
 
 		$updater   = new Updater( $this->repo_slug, $this->plugin_file );
@@ -168,8 +178,7 @@ class UpdaterTest extends TestCase {
 	public function check_update_injects_update_when_newer_version_available() {
 		$GLOBALS['wp_remote_get_response'] = $this->make_release_response(
 			'v2.0.0',
-			array(),
-			'https://api.github.com/repos/acme/my-plugin/zipball/v2.0.0'
+			array( $this->zip_asset( 'my-plugin-2.0.0.zip' ) )
 		);
 
 		$updater   = new Updater( $this->repo_slug, $this->plugin_file );
@@ -194,8 +203,7 @@ class UpdaterTest extends TestCase {
 	public function check_update_strips_leading_v_from_tag_name() {
 		$GLOBALS['wp_remote_get_response'] = $this->make_release_response(
 			'v1.5.3',
-			array(),
-			'https://api.github.com/repos/acme/my-plugin/zipball/v1.5.3'
+			array( $this->zip_asset( 'my-plugin-1.5.3.zip' ) )
 		);
 
 		$updater   = new Updater( $this->repo_slug, $this->plugin_file );
@@ -213,18 +221,12 @@ class UpdaterTest extends TestCase {
 	 * @test
 	 */
 	public function check_update_uses_zip_asset_url_when_asset_present() {
-		$asset_url = 'https://github.com/acme/my-plugin/releases/download/v2.0.0/my-plugin.zip';
-		$assets    = array(
-			array(
-				'content_type'         => 'application/zip',
-				'browser_download_url' => $asset_url,
-			),
-		);
+		$asset     = $this->zip_asset( 'my-plugin.zip' );
+		$asset_url = $asset['browser_download_url'];
 
 		$GLOBALS['wp_remote_get_response'] = $this->make_release_response(
 			'v2.0.0',
-			$assets,
-			'https://api.github.com/repos/acme/my-plugin/zipball/v2.0.0'
+			array( $asset )
 		);
 
 		$updater   = new Updater( $this->repo_slug, $this->plugin_file );
@@ -241,14 +243,8 @@ class UpdaterTest extends TestCase {
 	/**
 	 * @test
 	 */
-	public function check_update_falls_back_to_zipball_when_no_zip_asset() {
-		$zipball_url = 'https://api.github.com/repos/acme/my-plugin/zipball/v2.0.0';
-
-		$GLOBALS['wp_remote_get_response'] = $this->make_release_response(
-			'v2.0.0',
-			array(),
-			$zipball_url
-		);
+	public function check_update_returns_transient_unchanged_when_no_zip_asset() {
+		$GLOBALS['wp_remote_get_response'] = $this->make_release_response( 'v2.0.0', array() );
 
 		$updater   = new Updater( $this->repo_slug, $this->plugin_file );
 		$transient = (object) array(
@@ -258,25 +254,22 @@ class UpdaterTest extends TestCase {
 
 		$result = $updater->check_update( $transient );
 
-		$this->assertSame( $zipball_url, $result->response['my-plugin/my-plugin.php']->package );
+		$this->assertArrayNotHasKey( 'my-plugin/my-plugin.php', $result->response );
 	}
 
 	/**
 	 * @test
 	 */
-	public function check_update_ignores_non_zip_assets_and_falls_back_to_zipball() {
-		$zipball_url = 'https://api.github.com/repos/acme/my-plugin/zipball/v2.0.0';
-		$assets      = array(
-			array(
-				'content_type'         => 'application/gzip',
-				'browser_download_url' => 'https://github.com/acme/my-plugin/releases/download/v2.0.0/my-plugin.tar.gz',
-			),
+	public function check_update_ignores_non_zip_assets() {
+		$non_zip_asset = array(
+			'name'                 => 'my-plugin.tar.gz',
+			'browser_download_url' => 'https://github.com/acme/my-plugin/releases/download/v2.0.0/my-plugin.tar.gz',
 		);
+		$zip_asset      = $this->zip_asset( 'my-plugin-2.0.0.zip' );
 
 		$GLOBALS['wp_remote_get_response'] = $this->make_release_response(
 			'v2.0.0',
-			$assets,
-			$zipball_url
+			array( $non_zip_asset, $zip_asset )
 		);
 
 		$updater   = new Updater( $this->repo_slug, $this->plugin_file );
@@ -287,7 +280,52 @@ class UpdaterTest extends TestCase {
 
 		$result = $updater->check_update( $transient );
 
-		$this->assertSame( $zipball_url, $result->response['my-plugin/my-plugin.php']->package );
+		$this->assertSame( $zip_asset['browser_download_url'], $result->response['my-plugin/my-plugin.php']->package );
+	}
+
+	/**
+	 * @test
+	 */
+	public function check_update_prefers_slug_prefixed_zip_over_other_zip_assets() {
+		$other_zip = $this->zip_asset( 'changelog.zip' );
+		$slug_zip  = $this->zip_asset( 'my-plugin-2.0.0.zip' );
+
+		$GLOBALS['wp_remote_get_response'] = $this->make_release_response(
+			'v2.0.0',
+			array( $other_zip, $slug_zip )
+		);
+
+		$updater   = new Updater( $this->repo_slug, $this->plugin_file );
+		$transient = (object) array(
+			'checked'  => array( 'my-plugin/my-plugin.php' => '1.0.0' ),
+			'response' => array(),
+		);
+
+		$result = $updater->check_update( $transient );
+
+		$this->assertSame( $slug_zip['browser_download_url'], $result->response['my-plugin/my-plugin.php']->package );
+	}
+
+	/**
+	 * @test
+	 */
+	public function check_update_falls_back_to_first_zip_when_no_slug_match() {
+		$zip_asset = $this->zip_asset( 'release-bundle.zip' );
+
+		$GLOBALS['wp_remote_get_response'] = $this->make_release_response(
+			'v2.0.0',
+			array( $zip_asset )
+		);
+
+		$updater   = new Updater( $this->repo_slug, $this->plugin_file );
+		$transient = (object) array(
+			'checked'  => array( 'my-plugin/my-plugin.php' => '1.0.0' ),
+			'response' => array(),
+		);
+
+		$result = $updater->check_update( $transient );
+
+		$this->assertSame( $zip_asset['browser_download_url'], $result->response['my-plugin/my-plugin.php']->package );
 	}
 
 	/**
@@ -297,8 +335,7 @@ class UpdaterTest extends TestCase {
 		// Intercept the global response; verify the update still succeeds with a token set.
 		$GLOBALS['wp_remote_get_response'] = $this->make_release_response(
 			'v2.0.0',
-			array(),
-			'https://api.github.com/repos/acme/my-plugin/zipball/v2.0.0'
+			array( $this->zip_asset( 'my-plugin-2.0.0.zip' ) )
 		);
 
 		$updater   = new Updater( $this->repo_slug, $this->plugin_file, '', 'test-token-123' );
@@ -361,10 +398,11 @@ class UpdaterTest extends TestCase {
 	 * @test
 	 */
 	public function plugin_info_returns_plugin_info_object_for_matching_slug() {
+		$asset = $this->zip_asset( 'my-plugin-2.0.0.zip' );
+
 		$GLOBALS['wp_remote_get_response'] = $this->make_release_response(
 			'v2.0.0',
-			array(),
-			'https://api.github.com/repos/acme/my-plugin/zipball/v2.0.0'
+			array( $asset )
 		);
 
 		$updater = new Updater( $this->repo_slug, $this->plugin_file );
@@ -377,10 +415,7 @@ class UpdaterTest extends TestCase {
 		$this->assertSame( '2.0.0', $result->version );
 		$this->assertSame( 'acme', $result->author );
 		$this->assertSame( 'https://github.com/acme/my-plugin', $result->homepage );
-		$this->assertSame(
-			'https://api.github.com/repos/acme/my-plugin/zipball/v2.0.0',
-			$result->download_link
-		);
+		$this->assertSame( $asset['browser_download_url'], $result->download_link );
 		$this->assertSame( 'Release notes for v2.0.0', $result->sections['description'] );
 	}
 
@@ -388,18 +423,11 @@ class UpdaterTest extends TestCase {
 	 * @test
 	 */
 	public function plugin_info_prefers_zip_asset_for_download_link() {
-		$asset_url = 'https://github.com/acme/my-plugin/releases/download/v2.0.0/my-plugin.zip';
-		$assets    = array(
-			array(
-				'content_type'         => 'application/zip',
-				'browser_download_url' => $asset_url,
-			),
-		);
+		$asset = $this->zip_asset( 'my-plugin.zip' );
 
 		$GLOBALS['wp_remote_get_response'] = $this->make_release_response(
 			'v2.0.0',
-			$assets,
-			'https://api.github.com/repos/acme/my-plugin/zipball/v2.0.0'
+			array( $asset )
 		);
 
 		$updater = new Updater( $this->repo_slug, $this->plugin_file );
@@ -407,7 +435,7 @@ class UpdaterTest extends TestCase {
 
 		$result = $updater->plugin_info( false, 'plugin_information', $args );
 
-		$this->assertSame( $asset_url, $result->download_link );
+		$this->assertSame( $asset['browser_download_url'], $result->download_link );
 	}
 
 	// -------------------------------------------------------------------------
@@ -420,8 +448,7 @@ class UpdaterTest extends TestCase {
 	public function check_update_uses_custom_slug_in_response_when_provided() {
 		$GLOBALS['wp_remote_get_response'] = $this->make_release_response(
 			'v2.0.0',
-			array(),
-			'https://api.github.com/repos/acme/my-plugin/zipball/v2.0.0'
+			array( $this->zip_asset( 'my-plugin-2.0.0.zip' ) )
 		);
 
 		$updater   = new Updater( $this->repo_slug, $this->plugin_file, 'custom-update-slug' );
@@ -443,8 +470,7 @@ class UpdaterTest extends TestCase {
 	public function plugin_info_matches_custom_slug_when_provided() {
 		$GLOBALS['wp_remote_get_response'] = $this->make_release_response(
 			'v2.0.0',
-			array(),
-			'https://api.github.com/repos/acme/my-plugin/zipball/v2.0.0'
+			array( $this->zip_asset( 'my-plugin-2.0.0.zip' ) )
 		);
 
 		$updater = new Updater( $this->repo_slug, $this->plugin_file, 'custom-update-slug' );
@@ -476,8 +502,7 @@ class UpdaterTest extends TestCase {
 	public function constructor_accepts_token_and_slug_together() {
 		$GLOBALS['wp_remote_get_response'] = $this->make_release_response(
 			'v2.0.0',
-			array(),
-			'https://api.github.com/repos/acme/my-plugin/zipball/v2.0.0'
+			array( $this->zip_asset( 'my-plugin-2.0.0.zip' ) )
 		);
 
 		$updater   = new Updater( $this->repo_slug, $this->plugin_file, 'my-custom-slug', 'test-token' );

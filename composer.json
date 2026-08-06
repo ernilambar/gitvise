@@ -1,15 +1,16 @@
 {
 	"name": "ernilambar/gitvise",
-	"description": "WordPress plugin updater from GitHub releases",
+	"description": "Update WordPress plugins from GitHub releases.",
 	"license": "MIT",
 	"type": "library",
 	"require": {
 		"php": ">=7.4"
 	},
 	"require-dev": {
+		"ernilambar/coding-standard": "^2.0",
 		"phpunit/phpunit": "^9.0 || ^10.0",
 		"squizlabs/php_codesniffer": "^3.0",
-		"wp-coding-standards/wpcs": "^3.0"
+		"wp-coding-standards/wpcs": "^3.4"
 	},
 	"autoload": {
 		"psr-4": {
@@ -18,8 +19,14 @@
 	},
 	"config": {
 		"allow-plugins": {
-			"dealerdirect/phpcodesniffer-composer-installer": true
-		}
+			"dealerdirect/phpcodesniffer-composer-installer": true,
+			"ergebnis/composer-normalize": true
+		},
+		"optimize-autoloader": true,
+		"platform": {
+			"php": "7.4"
+		},
+		"sort-packages": true
 	},
 	"scripts": {
 		"format": "@php ./vendor/bin/phpcbf --report-full --report-summary .",
