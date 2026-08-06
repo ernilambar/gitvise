@@ -1,10 +1,11 @@
 {
 	"name": "ernilambar/gitvise",
 	"description": "Update WordPress plugins from GitHub releases.",
-	"license": "MIT",
+	"license": "GPL-2.0-or-later",
 	"type": "library",
 	"require": {
-		"php": ">=7.4"
+		"php": ">=7.4",
+		"erusev/parsedown": "^1.8"
 	},
 	"require-dev": {
 		"ernilambar/coding-standard": "^2.0",

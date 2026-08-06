@@ -7,6 +7,8 @@
 
 namespace Nilambar\Gitvise;
 
+use Nilambar\Gitvise\Readme\Parser;
+
 if ( ! class_exists( \Nilambar\Gitvise\Updater::class ) ) {
 
 	/**
@@ -180,6 +182,38 @@ if ( ! class_exists( \Nilambar\Gitvise\Updater::class ) ) {
 			$this->release_data = $data;
 
 			return $this->release_data;
+		}
+
+		/**
+		 * Fetch and decode readme.txt contents from the repository at a given tag.
+		 *
+		 * @since 1.0.2
+		 *
+		 * @param string $tag_name Git tag name.
+		 * @return string|false Raw readme.txt contents, or false when unavailable.
+		 */
+		private function get_readme_contents( $tag_name ) {
+			$url = 'https://api.github.com/repos/' . $this->repo_slug . '/contents/readme.txt?ref=' . rawurlencode( $tag_name );
+
+			$response = wp_remote_get( $url, $this->get_request_args() );
+
+			if ( is_wp_error( $response ) ) {
+				return false;
+			}
+
+			if ( 200 !== wp_remote_retrieve_response_code( $response ) ) {
+				return false;
+			}
+
+			$data = json_decode( wp_remote_retrieve_body( $response ), true );
+
+			if ( ! is_array( $data ) || empty( $data['content'] ) ) {
+				return false;
+			}
+
+			$contents = base64_decode( $data['content'] ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode
+
+			return false !== $contents ? $contents : false;
 		}
 
 		/**
@@ -359,9 +393,25 @@ if ( ! class_exists( \Nilambar\Gitvise\Updater::class ) ) {
 			$plugin_data = $this->get_plugin_header_data();
 			$github_url  = 'https://github.com/' . $this->repo_slug;
 
-			$description_content = isset( $release['body'] ) && '' !== trim( (string) $release['body'] )
-				? $release['body']
-				: ( isset( $plugin_data['Description'] ) ? $plugin_data['Description'] : '' );
+			$sections = array();
+
+			$readme_contents = $this->get_readme_contents( $release['tag_name'] );
+
+			if ( false !== $readme_contents ) {
+				$readme = new Parser( $readme_contents );
+
+				foreach ( $readme->sections as $section_name => $section_content ) {
+					if ( '' !== trim( (string) $section_content ) ) {
+						$sections[ $section_name ] = $section_content;
+					}
+				}
+			}
+
+			$sections['description'] = isset( $plugin_data['Description'] ) ? $plugin_data['Description'] : '';
+
+			if ( isset( $release['body'] ) && '' !== trim( (string) $release['body'] ) ) {
+				$sections['changelog'] = $release['body'];
+			}
 
 			$info = array(
 				'name'          => isset( $plugin_data['Name'] ) ? $plugin_data['Name'] : $args->slug,
@@ -370,9 +420,7 @@ if ( ! class_exists( \Nilambar\Gitvise\Updater::class ) ) {
 				'author'        => isset( $plugin_data['Author'] ) ? $plugin_data['Author'] : explode( '/', $this->repo_slug )[0],
 				'homepage'      => isset( $plugin_data['PluginURI'] ) && '' !== $plugin_data['PluginURI'] ? $plugin_data['PluginURI'] : $github_url,
 				'download_link' => $download_url,
-				'sections'      => array(
-					'description' => $description_content,
-				),
+				'sections'      => $sections,
 			);
 
 			if ( ! empty( $plugin_data['Description'] ) ) {
