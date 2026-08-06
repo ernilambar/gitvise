@@ -1,8 +1,8 @@
 # Gitvise
 
-WordPress PHP library for plugin updates from **GitHub releases**: uses the latest release tag as the version and the release ZIP (or zipball) as the package.
+WordPress PHP library for plugin updates from **GitHub releases**: uses the latest release tag as the version and the release ZIP as the package.
 
-**Requirements:** PHP 7.4+, WordPress 5.0+
+**Requirements:** PHP 7.4+, WordPress 6.0+
 
 ---
 
@@ -40,10 +40,10 @@ $updater->init();
 
 ## How it works
 
-On each update check, the library fetches the latest release from the GitHub API, compares the tag (e.g. `v1.2.3` → `1.2.3`) with the installed version from WordPress’s transient, and populates the update with the first ZIP asset or the zipball URL. The `plugins_api` filter is handled so “View details” shows release info.
+On each update check, the library fetches the latest release from the GitHub API, compares the tag (e.g. `v1.2.3` → `1.2.3`) with the installed version from WordPress’s transient, and populates the update with a ZIP asset from the release. The `plugins_api` filter is handled so “View details” shows release info.
 
 ---
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+[MIT](LICENSE)

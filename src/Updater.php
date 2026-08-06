@@ -24,6 +24,7 @@ if ( ! class_exists( \Nilambar\Gitvise\Updater::class ) ) {
 		 * GitHub repository slug in "username/repository" format.
 		 *
 		 * @since 1.0.0
+		 *
 		 * @var string
 		 */
 		private $repo_slug;
@@ -32,6 +33,7 @@ if ( ! class_exists( \Nilambar\Gitvise\Updater::class ) ) {
 		 * Absolute path to the plugin main file.
 		 *
 		 * @since 1.0.0
+		 *
 		 * @var string
 		 */
 		private $plugin_file;
@@ -40,6 +42,7 @@ if ( ! class_exists( \Nilambar\Gitvise\Updater::class ) ) {
 		 * Plugin slug (e.g. "my-plugin/my-plugin.php").
 		 *
 		 * @since 1.0.0
+		 *
 		 * @var string
 		 */
 		private $plugin_slug;
@@ -48,6 +51,7 @@ if ( ! class_exists( \Nilambar\Gitvise\Updater::class ) ) {
 		 * Optional update slug. When set, used in update checks and plugin info; otherwise derived from plugin path.
 		 *
 		 * @since 1.0.0
+		 *
 		 * @var string
 		 */
 		private $slug = '';
@@ -56,6 +60,7 @@ if ( ! class_exists( \Nilambar\Gitvise\Updater::class ) ) {
 		 * HTTP request timeout in seconds.
 		 *
 		 * @since 1.0.0
+		 *
 		 * @var int
 		 */
 		const REQUEST_TIMEOUT = 15;
@@ -64,6 +69,7 @@ if ( ! class_exists( \Nilambar\Gitvise\Updater::class ) ) {
 		 * Optional GitHub personal access token for authenticated requests.
 		 *
 		 * @since 1.0.0
+		 *
 		 * @var string
 		 */
 		private $access_token;
@@ -72,6 +78,7 @@ if ( ! class_exists( \Nilambar\Gitvise\Updater::class ) ) {
 		 * Cached release data from GitHub API.
 		 *
 		 * @since 1.0.0
+		 *
 		 * @var array|null
 		 */
 		private $release_data = null;
@@ -178,25 +185,42 @@ if ( ! class_exists( \Nilambar\Gitvise\Updater::class ) ) {
 		/**
 		 * Determine the download URL from a release.
 		 *
-		 * Prefers the first ZIP release asset; falls back to the GitHub-generated
-		 * zipball URL when no ZIP asset is attached.
+		 * Matches asset filenames ending in ".zip" (covers versioned names like
+		 * "slug-1.2.3.zip"). Prefers an asset named after the update slug when
+		 * multiple ZIP assets are present; otherwise uses the first ZIP asset found.
 		 *
 		 * @since 1.0.0
 		 *
 		 * @param array $release Release data from the GitHub API.
-		 * @return string|false Download URL, or false when none is available.
+		 * @return string|false Download URL, or false when no ZIP asset is available.
 		 */
 		private function get_download_url( $release ) {
-			if ( ! empty( $release['assets'] ) && is_array( $release['assets'] ) ) {
-				foreach ( $release['assets'] as $asset ) {
-					if ( isset( $asset['content_type'] ) && 'application/zip' === $asset['content_type'] ) {
-						return $asset['browser_download_url'];
-					}
+			if ( empty( $release['assets'] ) || ! is_array( $release['assets'] ) ) {
+				return false;
+			}
+
+			$slug      = $this->get_update_slug();
+			$first_zip = false;
+
+			foreach ( $release['assets'] as $asset ) {
+				if ( empty( $asset['browser_download_url'] ) || empty( $asset['name'] ) ) {
+					continue;
+				}
+
+				if ( 1 !== preg_match( '/\.zip$/i', $asset['name'] ) ) {
+					continue;
+				}
+
+				if ( false === $first_zip ) {
+					$first_zip = $asset['browser_download_url'];
+				}
+
+				if ( $asset['name'] === $slug . '.zip' || 0 === stripos( $asset['name'], $slug . '-' ) ) {
+					return $asset['browser_download_url'];
 				}
 			}
 
-			// Fall back to the auto-generated zipball when no asset is present.
-			return ! empty( $release['zipball_url'] ) ? $release['zipball_url'] : false;
+			return $first_zip;
 		}
 
 		/**

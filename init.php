@@ -24,6 +24,8 @@ if ( ! defined( 'GITVISE_VERSION' ) ) {
  * Reads from vendor/composer/installed.json when the package is installed via Composer;
  * otherwise returns the GITVISE_VERSION constant (e.g. when the package is the root project).
  *
+ * @since 1.0.0
+ *
  * @param string $package_root Absolute path to the package root (directory containing init.php).
  * @return string Version string.
  */
@@ -57,6 +59,8 @@ function gitvise_get_package_version( $package_root ) {
  * Scans plugin directories for vendor/ernilambar/gitvise and the current package;
  * returns the package root path for the copy with the greatest version number.
  * Version is read from Composer's installed.json when available.
+ *
+ * @since 1.0.0
  *
  * @return string Absolute path to the winning package root (no trailing slash).
  */
@@ -103,6 +107,8 @@ function gitvise_resolve_winner_root() {
 
 /**
  * PSR-4 autoloader for Nilambar\Gitvise namespace; loads from the resolved winner path.
+ *
+ * @since 1.0.0
  *
  * @param string $class_name Fully qualified class name.
  * @return void
