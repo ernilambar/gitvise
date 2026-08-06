@@ -56,14 +56,101 @@ function add_filter( $tag, $callback, $priority = 10, $accepted_args = 1 ) {}
 /**
  * Stub for wp_remote_get().
  *
- * Returns whatever is stored in $GLOBALS['wp_remote_get_response'].
+ * Routes readme.txt Contents API requests to $GLOBALS['wp_remote_get_readme_response'],
+ * everything else to $GLOBALS['wp_remote_get_response'].
  *
  * @param string $url  Request URL.
  * @param array  $args Request arguments.
  * @return mixed
  */
 function wp_remote_get( $url, $args = array() ) {
+	if ( false !== strpos( $url, '/contents/readme.txt' ) ) {
+		return $GLOBALS['wp_remote_get_readme_response'] ?? null;
+	}
+
 	return $GLOBALS['wp_remote_get_response'] ?? null;
+}
+
+/**
+ * Stub for get_plugin_data().
+ *
+ * Returns whatever is stored in $GLOBALS['get_plugin_data_response'].
+ *
+ * @param string $plugin_file Absolute path to the plugin main file.
+ * @param bool   $markup      Unused.
+ * @param bool   $translate   Unused.
+ * @return array Plugin header data.
+ */
+function get_plugin_data( $plugin_file, $markup = true, $translate = true ) {
+	return $GLOBALS['get_plugin_data_response'] ?? array();
+}
+
+/**
+ * Stub for esc_html().
+ *
+ * @param string $text Text to escape.
+ * @return string
+ */
+function esc_html( $text ) {
+	return htmlspecialchars( (string) $text, ENT_QUOTES, 'UTF-8' );
+}
+
+/**
+ * Stub for wp_strip_all_tags().
+ *
+ * @param string $text          Text to strip.
+ * @param bool   $remove_breaks Whether to remove line breaks too.
+ * @return string
+ */
+function wp_strip_all_tags( $text, $remove_breaks = false ) {
+	$text = strip_tags( (string) $text );
+
+	if ( $remove_breaks ) {
+		$text = preg_replace( '/[\r\n\t ]+/', ' ', $text );
+	}
+
+	return trim( $text );
+}
+
+/**
+ * Stub for force_balance_tags().
+ *
+ * Not a faithful reimplementation — just returns the text unchanged, which is
+ * sufficient for well-formed test fixtures.
+ *
+ * @param string $text HTML to balance.
+ * @return string
+ */
+function force_balance_tags( $text ) {
+	return $text;
+}
+
+/**
+ * Stub for wp_kses().
+ *
+ * Not a faithful reimplementation of WordPress' KSES filtering — just returns
+ * the text unchanged, which is sufficient for well-formed test fixtures.
+ *
+ * @param string $text    Text to filter.
+ * @param array  $allowed Allowed HTML.
+ * @return string
+ */
+function wp_kses( $text, $allowed ) {
+	return $text;
+}
+
+/**
+ * Stub for get_user_by().
+ *
+ * Always returns false — readme contributors are wp.org usernames, not local
+ * WordPress users, so lookups never match in this context.
+ *
+ * @param string $field Field to look up by.
+ * @param string $value Value to look up.
+ * @return false
+ */
+function get_user_by( $field, $value ) {
+	return false;
 }
 
 /**

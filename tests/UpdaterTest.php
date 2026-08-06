@@ -30,10 +30,30 @@ class UpdaterTest extends TestCase {
 	private $repo_slug = 'acme/my-plugin';
 
 	/**
+	 * Temporary plugin directories created by make_plugin_file(), cleaned up in tearDown().
+	 *
+	 * @var string[]
+	 */
+	private $temp_dirs = array();
+
+	/**
 	 * Reset the global HTTP response stub before every test.
 	 */
 	protected function setUp(): void {
-		$GLOBALS['wp_remote_get_response'] = null;
+		$GLOBALS['wp_remote_get_response']        = null;
+		$GLOBALS['wp_remote_get_readme_response'] = null;
+		$GLOBALS['get_plugin_data_response']      = null;
+	}
+
+	/**
+	 * Remove any temporary plugin directories created during the test.
+	 */
+	protected function tearDown(): void {
+		foreach ( $this->temp_dirs as $dir ) {
+			array_map( 'unlink', glob( $dir . '/*' ) );
+			rmdir( $dir );
+		}
+		$this->temp_dirs = array();
 	}
 
 	// -------------------------------------------------------------------------
@@ -71,6 +91,39 @@ class UpdaterTest extends TestCase {
 		return array(
 			'name'                 => $name,
 			'browser_download_url' => '' !== $url ? $url : 'https://github.com/acme/my-plugin/releases/download/v2.0.0/' . $name,
+		);
+	}
+
+	/**
+	 * Create a real, readable plugin file so get_plugin_header_data() reads it.
+	 *
+	 * The stubbed get_plugin_data() ignores file contents and returns
+	 * $GLOBALS['get_plugin_data_response'] instead; this only needs to exist
+	 * on disk so is_readable() passes.
+	 *
+	 * @return string Absolute path to "<tmp dir>/my-plugin/my-plugin.php".
+	 */
+	private function make_plugin_file() {
+		$dir = sys_get_temp_dir() . '/gitvise-test-' . uniqid();
+		mkdir( $dir );
+		$file = $dir . '/my-plugin.php';
+		file_put_contents( $file, "<?php\n" );
+
+		$this->temp_dirs[] = $dir;
+
+		return $file;
+	}
+
+	/**
+	 * Build a fake 200 OK GitHub Contents API response for readme.txt.
+	 *
+	 * @param string $contents Raw readme.txt contents.
+	 * @return array
+	 */
+	private function make_readme_response( $contents ) {
+		return array(
+			'response' => array( 'code' => 200 ),
+			'body'     => json_encode( array( 'content' => base64_encode( $contents ) ) ),
 		);
 	}
 
@@ -416,7 +469,127 @@ class UpdaterTest extends TestCase {
 		$this->assertSame( 'acme', $result->author );
 		$this->assertSame( 'https://github.com/acme/my-plugin', $result->homepage );
 		$this->assertSame( $asset['browser_download_url'], $result->download_link );
-		$this->assertSame( 'Release notes for v2.0.0', $result->sections['description'] );
+		$this->assertSame( '', $result->sections['description'] );
+		$this->assertSame( 'Release notes for v2.0.0', $result->sections['changelog'] );
+	}
+
+	// -------------------------------------------------------------------------
+	// plugin_info() – description always from plugin header (Issue 1).
+	// -------------------------------------------------------------------------
+
+	/**
+	 * @test
+	 */
+	public function plugin_info_uses_plugin_header_description_even_when_release_body_present() {
+		$plugin_file = $this->make_plugin_file();
+
+		$GLOBALS['get_plugin_data_response'] = array( 'Description' => 'The actual plugin description.' );
+		$GLOBALS['wp_remote_get_response']   = $this->make_release_response(
+			'v2.0.0',
+			array( $this->zip_asset( 'my-plugin-2.0.0.zip' ) )
+		);
+
+		$updater = new Updater( $this->repo_slug, $plugin_file, 'my-plugin' );
+		$args    = (object) array( 'slug' => 'my-plugin' );
+
+		$result = $updater->plugin_info( false, 'plugin_information', $args );
+
+		$this->assertSame( 'The actual plugin description.', $result->sections['description'] );
+		$this->assertSame( 'Release notes for v2.0.0', $result->sections['changelog'] );
+	}
+
+	/**
+	 * @test
+	 */
+	public function plugin_info_omits_changelog_section_when_release_body_is_empty() {
+		$GLOBALS['wp_remote_get_response'] = array(
+			'response' => array( 'code' => 200 ),
+			'body'     => json_encode(
+				array(
+					'tag_name' => 'v2.0.0',
+					'body'     => '',
+					'assets'   => array( $this->zip_asset( 'my-plugin-2.0.0.zip' ) ),
+				)
+			),
+		);
+
+		$updater = new Updater( $this->repo_slug, $this->plugin_file );
+		$args    = (object) array( 'slug' => 'my-plugin' );
+
+		$result = $updater->plugin_info( false, 'plugin_information', $args );
+
+		$this->assertArrayNotHasKey( 'changelog', $result->sections );
+	}
+
+	// -------------------------------------------------------------------------
+	// plugin_info() – readme.txt merging (Issue 2).
+	// -------------------------------------------------------------------------
+
+	/**
+	 * @test
+	 */
+	public function plugin_info_merges_readme_sections_when_readme_exists() {
+		$plugin_file = $this->make_plugin_file();
+
+		$readme = <<<'README'
+=== My Plugin ===
+Contributors: someuser
+Tags: foo, bar
+Stable tag: 2.0.0
+
+Short description here.
+
+== Installation ==
+
+1. Upload the plugin.
+2. Activate it.
+
+== Frequently Asked Questions ==
+
+= Does it work? =
+
+Yes, it does.
+README;
+
+		$GLOBALS['get_plugin_data_response']      = array( 'Description' => 'The actual plugin description.' );
+		$GLOBALS['wp_remote_get_response']         = $this->make_release_response(
+			'v2.0.0',
+			array( $this->zip_asset( 'my-plugin-2.0.0.zip' ) )
+		);
+		$GLOBALS['wp_remote_get_readme_response'] = $this->make_readme_response( $readme );
+
+		$updater = new Updater( $this->repo_slug, $plugin_file, 'my-plugin' );
+		$args    = (object) array( 'slug' => 'my-plugin' );
+
+		$result = $updater->plugin_info( false, 'plugin_information', $args );
+
+		$this->assertStringContainsString( 'Upload the plugin', $result->sections['installation'] );
+		$this->assertStringContainsString( 'Does it work?', $result->sections['faq'] );
+		$this->assertStringContainsString( 'Yes, it does.', $result->sections['faq'] );
+		$this->assertSame( 'The actual plugin description.', $result->sections['description'] );
+		$this->assertSame( 'Release notes for v2.0.0', $result->sections['changelog'] );
+	}
+
+	/**
+	 * @test
+	 */
+	public function plugin_info_skips_readme_merge_when_readme_is_missing() {
+		$GLOBALS['wp_remote_get_response']        = $this->make_release_response(
+			'v2.0.0',
+			array( $this->zip_asset( 'my-plugin-2.0.0.zip' ) )
+		);
+		$GLOBALS['wp_remote_get_readme_response'] = array(
+			'response' => array( 'code' => 404 ),
+			'body'     => '',
+		);
+
+		$updater = new Updater( $this->repo_slug, $this->plugin_file );
+		$args    = (object) array( 'slug' => 'my-plugin' );
+
+		$result = $updater->plugin_info( false, 'plugin_information', $args );
+
+		$this->assertArrayNotHasKey( 'installation', $result->sections );
+		$this->assertArrayNotHasKey( 'faq', $result->sections );
 	}
 
 	/**

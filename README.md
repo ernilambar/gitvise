@@ -46,4 +46,4 @@ On each update check, the library fetches the latest release from the GitHub API
 
 ## License
 
-[MIT](LICENSE)
+[GPL-2.0-or-later](LICENSE)
