@@ -89,11 +89,6 @@ class Parser {
 	public $screenshots = array();
 
 	/**
-	 * @var array
-	 */
-	public $faq = array();
-
-	/**
 	 * Warning flags which indicate specific parsing failures have occurred.
 	 *
 	 * @var array
@@ -480,16 +475,9 @@ class Parser {
 			}
 		}
 
-		// Display FAQs as a definition list.
-		if ( isset( $this->sections['faq'] ) ) {
-			$this->faq             = $this->parse_section( $this->sections['faq'] );
-			$this->sections['faq'] = '';
-		}
-
 		// Markdownify!
 		$this->sections       = array_map( array( $this, 'parse_markdown' ), $this->sections );
 		$this->upgrade_notice = array_map( array( $this, 'parse_markdown' ), $this->upgrade_notice );
-		$this->faq            = array_map( array( $this, 'parse_markdown' ), $this->faq );
 
 		// Use the first line of the description for the short description if not provided.
 		if ( ! $this->short_description && ! empty( $this->sections['description'] ) ) {
@@ -518,23 +506,6 @@ class Parser {
 				}
 			}
 			unset( $this->sections['screenshots'] );
-		}
-
-		if ( ! empty( $this->faq ) ) {
-			// If the FAQ contained data we couldn't parse, we'll treat it as freeform and display it before any questions which are found.
-			if ( isset( $this->faq[''] ) ) {
-				$this->sections['faq'] .= $this->faq[''];
-				unset( $this->faq[''] );
-			}
-
-			if ( $this->faq ) {
-				$this->sections['faq'] .= "\n<dl>\n";
-				foreach ( $this->faq as $question => $answer ) {
-					$question_slug          = rawurlencode( trim( strtolower( $question ) ) );
-					$this->sections['faq'] .= "<dt id='{$question_slug}'><h3>{$question}</h3></dt>\n<dd>{$answer}</dd>\n";
-				}
-				$this->sections['faq'] .= "\n</dl>\n";
-			}
 		}
 
 		// Filter the HTML.

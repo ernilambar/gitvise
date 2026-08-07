@@ -560,6 +560,8 @@ Short description here.
 
 == Installation ==
 
+= Using The WordPress Dashboard =
+
 1. Upload the plugin.
 2. Activate it.
 
@@ -582,9 +584,11 @@ README;
 
 		$result = $updater->plugin_info( false, 'plugin_information', $args );
 
+		$this->assertStringContainsString( '<p>= Using The WordPress Dashboard =</p>', $result->sections['installation'] );
 		$this->assertStringContainsString( 'Upload the plugin', $result->sections['installation'] );
-		$this->assertStringContainsString( 'Does it work?', $result->sections['faq'] );
+		$this->assertStringContainsString( '<p>= Does it work? =</p>', $result->sections['faq'] );
 		$this->assertStringContainsString( 'Yes, it does.', $result->sections['faq'] );
+		$this->assertStringNotContainsString( '<dl>', $result->sections['faq'] );
 		$this->assertStringContainsString( 'Short description here.', $result->sections['description'] );
 		$this->assertSame( '<p>Release notes for v2.0.0</p>', $result->sections['changelog'] );
 	}

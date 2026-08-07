@@ -1,5 +1,8 @@
 # gitvise Changelog
 
+## 1.0.5 - 2026-08-07
+- Changed: fix rendering FAQ section
+
 ## 1.0.4 - 2026-08-07
 - Changed: `readme.txt` description and changelog now take priority over the plugin header and release notes
 
