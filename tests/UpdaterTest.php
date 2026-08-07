@@ -67,13 +67,13 @@ class UpdaterTest extends TestCase {
 	 * @param array  $assets   Optional release assets array.
 	 * @return array
 	 */
-	private function make_release_response( $tag_name, $assets = array() ) {
+	private function make_release_response( $tag_name, $assets = array(), $body = null ) {
 		return array(
 			'response' => array( 'code' => 200 ),
 			'body'     => json_encode(
 				array(
 					'tag_name' => $tag_name,
-					'body'     => 'Release notes for ' . $tag_name,
+					'body'     => null !== $body ? $body : 'Release notes for ' . $tag_name,
 					'assets'   => $assets,
 				)
 			),
@@ -470,17 +470,17 @@ class UpdaterTest extends TestCase {
 		$this->assertSame( 'https://github.com/acme/my-plugin', $result->homepage );
 		$this->assertSame( $asset['browser_download_url'], $result->download_link );
 		$this->assertSame( '', $result->sections['description'] );
-		$this->assertSame( 'Release notes for v2.0.0', $result->sections['changelog'] );
+		$this->assertSame( '<p>Release notes for v2.0.0</p>', $result->sections['changelog'] );
 	}
 
 	// -------------------------------------------------------------------------
-	// plugin_info() – description always from plugin header (Issue 1).
+	// plugin_info() – description falls back to plugin header when no readme.
 	// -------------------------------------------------------------------------
 
 	/**
 	 * @test
 	 */
-	public function plugin_info_uses_plugin_header_description_even_when_release_body_present() {
+	public function plugin_info_uses_plugin_header_description_when_readme_is_missing() {
 		$plugin_file = $this->make_plugin_file();
 
 		$GLOBALS['get_plugin_data_response'] = array( 'Description' => 'The actual plugin description.' );
@@ -495,7 +495,7 @@ class UpdaterTest extends TestCase {
 		$result = $updater->plugin_info( false, 'plugin_information', $args );
 
 		$this->assertSame( 'The actual plugin description.', $result->sections['description'] );
-		$this->assertSame( 'Release notes for v2.0.0', $result->sections['changelog'] );
+		$this->assertSame( '<p>Release notes for v2.0.0</p>', $result->sections['changelog'] );
 	}
 
 	/**
@@ -521,8 +521,27 @@ class UpdaterTest extends TestCase {
 		$this->assertArrayNotHasKey( 'changelog', $result->sections );
 	}
 
+	/**
+	 * @test
+	 */
+	public function plugin_info_renders_markdown_in_release_body_changelog() {
+		$GLOBALS['wp_remote_get_response'] = $this->make_release_response(
+			'v2.0.0',
+			array( $this->zip_asset( 'my-plugin-2.0.0.zip' ) ),
+			"**Bold** change\n- List item"
+		);
+
+		$updater = new Updater( $this->repo_slug, $this->plugin_file );
+		$args    = (object) array( 'slug' => 'my-plugin' );
+
+		$result = $updater->plugin_info( false, 'plugin_information', $args );
+
+		$this->assertStringContainsString( '<strong>Bold</strong>', $result->sections['changelog'] );
+		$this->assertStringContainsString( '<li>List item</li>', $result->sections['changelog'] );
+	}
+
 	// -------------------------------------------------------------------------
-	// plugin_info() – readme.txt merging (Issue 2).
+	// plugin_info() – readme.txt merging.
 	// -------------------------------------------------------------------------
 
 	/**
@@ -566,8 +585,44 @@ README;
 		$this->assertStringContainsString( 'Upload the plugin', $result->sections['installation'] );
 		$this->assertStringContainsString( 'Does it work?', $result->sections['faq'] );
 		$this->assertStringContainsString( 'Yes, it does.', $result->sections['faq'] );
-		$this->assertSame( 'The actual plugin description.', $result->sections['description'] );
-		$this->assertSame( 'Release notes for v2.0.0', $result->sections['changelog'] );
+		$this->assertStringContainsString( 'Short description here.', $result->sections['description'] );
+		$this->assertSame( '<p>Release notes for v2.0.0</p>', $result->sections['changelog'] );
+	}
+
+	/**
+	 * @test
+	 */
+	public function plugin_info_uses_readme_changelog_over_release_body_when_present() {
+		$plugin_file = $this->make_plugin_file();
+
+		$readme = <<<'README'
+=== My Plugin ===
+Contributors: someuser
+Tags: foo, bar
+Stable tag: 2.0.0
+
+Short description here.
+
+== Changelog ==
+
+= 2.0.0 =
+* Readme changelog entry.
+README;
+
+		$GLOBALS['get_plugin_data_response']      = array( 'Description' => 'The actual plugin description.' );
+		$GLOBALS['wp_remote_get_response']         = $this->make_release_response(
+			'v2.0.0',
+			array( $this->zip_asset( 'my-plugin-2.0.0.zip' ) )
+		);
+		$GLOBALS['wp_remote_get_readme_response'] = $this->make_readme_response( $readme );
+
+		$updater = new Updater( $this->repo_slug, $plugin_file, 'my-plugin' );
+		$args    = (object) array( 'slug' => 'my-plugin' );
+
+		$result = $updater->plugin_info( false, 'plugin_information', $args );
+
+		$this->assertStringContainsString( 'Readme changelog entry', $result->sections['changelog'] );
+		$this->assertStringContainsString( 'Short description here.', $result->sections['description'] );
 	}
 
 	/**

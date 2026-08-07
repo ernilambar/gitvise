@@ -1,5 +1,8 @@
 # gitvise Changelog
 
+## 1.0.4 - 2026-08-07
+- Changed: `readme.txt` description and changelog now take priority over the plugin header and release notes
+
 ## 1.0.3 - 2026-08-06
 - Fixed: fatal "Cannot redeclare" error when multiple plugins bundle the library
 

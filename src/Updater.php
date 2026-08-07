@@ -407,10 +407,12 @@ if ( ! class_exists( \Nilambar\Gitvise\Updater::class ) ) {
 				}
 			}
 
-			$sections['description'] = isset( $plugin_data['Description'] ) ? $plugin_data['Description'] : '';
+			if ( empty( $sections['description'] ) ) {
+				$sections['description'] = isset( $plugin_data['Description'] ) ? $plugin_data['Description'] : '';
+			}
 
-			if ( isset( $release['body'] ) && '' !== trim( (string) $release['body'] ) ) {
-				$sections['changelog'] = $release['body'];
+			if ( empty( $sections['changelog'] ) && isset( $release['body'] ) && '' !== trim( (string) $release['body'] ) ) {
+				$sections['changelog'] = Parser::markdown_to_html( $release['body'] );
 			}
 
 			$info = array(

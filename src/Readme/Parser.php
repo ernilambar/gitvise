@@ -200,6 +200,21 @@ class Parser {
 	}
 
 	/**
+	 * Convert arbitrary Markdown text into sanitized HTML.
+	 *
+	 * Used for Markdown sourced outside of readme.txt (e.g. GitHub release notes),
+	 * so it renders the same way as readme.txt sections.
+	 *
+	 * @param string $text Raw Markdown text.
+	 * @return string Sanitized HTML.
+	 */
+	public static function markdown_to_html( $text ) {
+		$parser = new self();
+
+		return $parser->filter_text( $parser->parse_markdown( $text ) );
+	}
+
+	/**
 	 * @param string $file_or_url
 	 * @return bool
 	 */
@@ -619,7 +634,7 @@ class Parser {
 	 * @return false|array
 	 */
 	protected function parse_possible_header( $line, $only_valid = false ) {
-		if ( ! str_contains( $line, ':' ) || str_starts_with( $line, '#' ) || str_starts_with( $line, '=' ) ) {
+		if ( false === strpos( $line, ':' ) || '#' === substr( $line, 0, 1 ) || '=' === substr( $line, 0, 1 ) ) {
 			return false;
 		}
 
@@ -1026,14 +1041,14 @@ class Parser {
 
 		// First check to see if it's most probably an incompatible license.
 		foreach ( $probably_incompatible as $match ) {
-			if ( str_contains( $license, $match ) ) {
+			if ( false !== strpos( $license, $match ) ) {
 				return 'invalid_license';
 			}
 		}
 
 		// Check to see if it's likely compatible.
 		foreach ( $probably_compatible as $match ) {
-			if ( str_contains( $license, $match ) ) {
+			if ( false !== strpos( $license, $match ) ) {
 				return true;
 			}
 		}
