@@ -86,6 +86,27 @@ function get_plugin_data( $plugin_file, $markup = true, $translate = true ) {
 }
 
 /**
+ * Stub for get_file_data().
+ *
+ * Returns whatever is stored in $GLOBALS['get_file_data_response'], keyed the
+ * same way as the real function (falls back to empty strings for any
+ * requested header not present in the stubbed response).
+ *
+ * @param string $file    Absolute path to the file.
+ * @param array  $headers Map of header key => header label to extract.
+ * @param string $context Unused.
+ * @return array Header values keyed the same as $headers.
+ */
+function get_file_data( $file, $headers, $context = '' ) {
+	$response = $GLOBALS['get_file_data_response'] ?? array();
+
+	return array_merge(
+		array_fill_keys( array_keys( $headers ), '' ),
+		array_intersect_key( $response, $headers )
+	);
+}
+
+/**
  * Stub for esc_html().
  *
  * @param string $text Text to escape.

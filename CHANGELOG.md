@@ -1,5 +1,8 @@
 # gitvise Changelog
 
+## 1.0.6 - 2026-08-10
+- Added: WordPress/PHP version requirements and last updated date in the "View details" popup
+
 ## 1.0.5 - 2026-08-07
 - Changed: fix rendering FAQ section
 

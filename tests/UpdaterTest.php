@@ -43,6 +43,7 @@ class UpdaterTest extends TestCase {
 		$GLOBALS['wp_remote_get_response']        = null;
 		$GLOBALS['wp_remote_get_readme_response'] = null;
 		$GLOBALS['get_plugin_data_response']      = null;
+		$GLOBALS['get_file_data_response']        = null;
 	}
 
 	/**
@@ -668,6 +669,167 @@ README;
 		$result = $updater->plugin_info( false, 'plugin_information', $args );
 
 		$this->assertSame( $asset['browser_download_url'], $result->download_link );
+	}
+
+	// -------------------------------------------------------------------------
+	// plugin_info() – requires / tested / requires_php / last_updated.
+	// -------------------------------------------------------------------------
+
+	/**
+	 * @test
+	 */
+	public function plugin_info_prefers_php_header_over_readme_for_version_requirements() {
+		$plugin_file = $this->make_plugin_file();
+
+		$readme = <<<'README'
+=== My Plugin ===
+Contributors: someuser
+Requires at least: 5.0
+Tested up to: 6.0
+Requires PHP: 7.0
+Stable tag: 2.0.0
+
+Short description here.
+README;
+
+		$GLOBALS['get_plugin_data_response'] = array(
+			'RequiresWP'  => '6.3',
+			'RequiresPHP' => '7.4',
+		);
+		$GLOBALS['get_file_data_response']   = array( 'TestedUpTo' => '7.0.3' );
+		$GLOBALS['wp_remote_get_response']   = $this->make_release_response(
+			'v2.0.0',
+			array( $this->zip_asset( 'my-plugin-2.0.0.zip' ) )
+		);
+		$GLOBALS['wp_remote_get_readme_response'] = $this->make_readme_response( $readme );
+
+		$updater = new Updater( $this->repo_slug, $plugin_file, 'my-plugin' );
+		$args    = (object) array( 'slug' => 'my-plugin' );
+
+		$result = $updater->plugin_info( false, 'plugin_information', $args );
+
+		$this->assertSame( '6.3', $result->requires );
+		$this->assertSame( '7.0.3', $result->tested );
+		$this->assertSame( '7.4', $result->requires_php );
+	}
+
+	/**
+	 * @test
+	 */
+	public function plugin_info_uses_readme_version_requirements_when_php_header_absent() {
+		$plugin_file = $this->make_plugin_file();
+
+		$readme = <<<'README'
+=== My Plugin ===
+Contributors: someuser
+Requires at least: 5.0
+Tested up to: 6.0
+Requires PHP: 7.0
+Stable tag: 2.0.0
+
+Short description here.
+README;
+
+		$GLOBALS['get_plugin_data_response']      = array();
+		$GLOBALS['wp_remote_get_response']        = $this->make_release_response(
+			'v2.0.0',
+			array( $this->zip_asset( 'my-plugin-2.0.0.zip' ) )
+		);
+		$GLOBALS['wp_remote_get_readme_response'] = $this->make_readme_response( $readme );
+
+		$updater = new Updater( $this->repo_slug, $plugin_file, 'my-plugin' );
+		$args    = (object) array( 'slug' => 'my-plugin' );
+
+		$result = $updater->plugin_info( false, 'plugin_information', $args );
+
+		$this->assertSame( '5.0', $result->requires );
+		$this->assertSame( '6.0', $result->tested );
+		$this->assertSame( '7.0', $result->requires_php );
+	}
+
+	/**
+	 * @test
+	 */
+	public function plugin_info_omits_version_requirement_keys_when_neither_source_has_them() {
+		$GLOBALS['wp_remote_get_response'] = $this->make_release_response(
+			'v2.0.0',
+			array( $this->zip_asset( 'my-plugin-2.0.0.zip' ) )
+		);
+
+		$updater = new Updater( $this->repo_slug, $this->plugin_file );
+		$args    = (object) array( 'slug' => 'my-plugin' );
+
+		$result = $updater->plugin_info( false, 'plugin_information', $args );
+
+		$this->assertFalse( property_exists( $result, 'requires' ) );
+		$this->assertFalse( property_exists( $result, 'tested' ) );
+		$this->assertFalse( property_exists( $result, 'requires_php' ) );
+	}
+
+	/**
+	 * @test
+	 */
+	public function plugin_info_sets_last_updated_from_release_published_at() {
+		$GLOBALS['wp_remote_get_response'] = array(
+			'response' => array( 'code' => 200 ),
+			'body'     => json_encode(
+				array(
+					'tag_name'     => 'v2.0.0',
+					'body'         => 'Release notes',
+					'assets'       => array( $this->zip_asset( 'my-plugin-2.0.0.zip' ) ),
+					'published_at' => '2026-06-01T12:00:00Z',
+					'created_at'   => '2026-05-01T12:00:00Z',
+				)
+			),
+		);
+
+		$updater = new Updater( $this->repo_slug, $this->plugin_file );
+		$args    = (object) array( 'slug' => 'my-plugin' );
+
+		$result = $updater->plugin_info( false, 'plugin_information', $args );
+
+		$this->assertSame( '2026-06-01T12:00:00Z', $result->last_updated );
+	}
+
+	/**
+	 * @test
+	 */
+	public function plugin_info_falls_back_to_created_at_when_published_at_is_missing() {
+		$GLOBALS['wp_remote_get_response'] = array(
+			'response' => array( 'code' => 200 ),
+			'body'     => json_encode(
+				array(
+					'tag_name'   => 'v2.0.0',
+					'body'       => 'Release notes',
+					'assets'     => array( $this->zip_asset( 'my-plugin-2.0.0.zip' ) ),
+					'created_at' => '2026-05-01T12:00:00Z',
+				)
+			),
+		);
+
+		$updater = new Updater( $this->repo_slug, $this->plugin_file );
+		$args    = (object) array( 'slug' => 'my-plugin' );
+
+		$result = $updater->plugin_info( false, 'plugin_information', $args );
+
+		$this->assertSame( '2026-05-01T12:00:00Z', $result->last_updated );
+	}
+
+	/**
+	 * @test
+	 */
+	public function plugin_info_omits_last_updated_when_release_has_no_timestamps() {
+		$GLOBALS['wp_remote_get_response'] = $this->make_release_response(
+			'v2.0.0',
+			array( $this->zip_asset( 'my-plugin-2.0.0.zip' ) )
+		);
+
+		$updater = new Updater( $this->repo_slug, $this->plugin_file );
+		$args    = (object) array( 'slug' => 'my-plugin' );
+
+		$result = $updater->plugin_info( false, 'plugin_information', $args );
+
+		$this->assertFalse( property_exists( $result, 'last_updated' ) );
 	}
 
 	// -------------------------------------------------------------------------

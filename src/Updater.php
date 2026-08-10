@@ -272,7 +272,9 @@ if ( ! class_exists( \Nilambar\Gitvise\Updater::class ) ) {
 		/**
 		 * Get plugin header data from the main plugin file.
 		 *
-		 * Used to populate name, description, and author in the "View details" popup.
+		 * Used to populate name, description, author, and version requirements in
+		 * the "View details" popup. Includes the "Tested up to" custom header
+		 * under the "TestedUpTo" key, since get_plugin_data() does not recognize it.
 		 *
 		 * @since 1.0.0
 		 *
@@ -292,7 +294,21 @@ if ( ! class_exists( \Nilambar\Gitvise\Updater::class ) ) {
 
 			$data = get_plugin_data( $this->plugin_file, false, false );
 
-			return is_array( $data ) ? $data : array();
+			if ( ! is_array( $data ) ) {
+				$data = array();
+			}
+
+			$data['TestedUpTo'] = '';
+
+			if ( function_exists( 'get_file_data' ) ) {
+				$custom_headers = get_file_data( $this->plugin_file, array( 'TestedUpTo' => 'Tested up to' ) );
+
+				if ( isset( $custom_headers['TestedUpTo'] ) ) {
+					$data['TestedUpTo'] = $custom_headers['TestedUpTo'];
+				}
+			}
+
+			return $data;
 		}
 
 		/**
@@ -395,6 +411,10 @@ if ( ! class_exists( \Nilambar\Gitvise\Updater::class ) ) {
 
 			$sections = array();
 
+			$readme_requires     = '';
+			$readme_tested       = '';
+			$readme_requires_php = '';
+
 			$readme_contents = $this->get_readme_contents( $release['tag_name'] );
 
 			if ( false !== $readme_contents ) {
@@ -405,6 +425,10 @@ if ( ! class_exists( \Nilambar\Gitvise\Updater::class ) ) {
 						$sections[ $section_name ] = $section_content;
 					}
 				}
+
+				$readme_requires     = $readme->requires;
+				$readme_tested       = $readme->tested;
+				$readme_requires_php = $readme->requires_php;
 			}
 
 			if ( empty( $sections['description'] ) ) {
@@ -413,6 +437,17 @@ if ( ! class_exists( \Nilambar\Gitvise\Updater::class ) ) {
 
 			if ( empty( $sections['changelog'] ) && isset( $release['body'] ) && '' !== trim( (string) $release['body'] ) ) {
 				$sections['changelog'] = Parser::markdown_to_html( $release['body'] );
+			}
+
+			$requires     = ! empty( $plugin_data['RequiresWP'] ) ? $plugin_data['RequiresWP'] : $readme_requires;
+			$tested       = ! empty( $plugin_data['TestedUpTo'] ) ? $plugin_data['TestedUpTo'] : $readme_tested;
+			$requires_php = ! empty( $plugin_data['RequiresPHP'] ) ? $plugin_data['RequiresPHP'] : $readme_requires_php;
+			$last_updated = '';
+
+			if ( ! empty( $release['published_at'] ) ) {
+				$last_updated = (string) $release['published_at'];
+			} elseif ( ! empty( $release['created_at'] ) ) {
+				$last_updated = (string) $release['created_at'];
 			}
 
 			$info = array(
@@ -427,6 +462,22 @@ if ( ! class_exists( \Nilambar\Gitvise\Updater::class ) ) {
 
 			if ( ! empty( $plugin_data['Description'] ) ) {
 				$info['short_description'] = $plugin_data['Description'];
+			}
+
+			if ( '' !== $requires ) {
+				$info['requires'] = $requires;
+			}
+
+			if ( '' !== $tested ) {
+				$info['tested'] = $tested;
+			}
+
+			if ( '' !== $requires_php ) {
+				$info['requires_php'] = $requires_php;
+			}
+
+			if ( '' !== $last_updated ) {
+				$info['last_updated'] = $last_updated;
 			}
 
 			return (object) $info;
