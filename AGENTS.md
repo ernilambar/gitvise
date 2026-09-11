@@ -2,7 +2,7 @@
 
 ## Overview
 
-WordPress PHP library that delivers plugin updates from **GitHub releases**. Uses Composer for autoloading and ships an `init.php` single entry point. Targets PHP 7.4+, WordPress 6.0+, GPL-2.0-or-later.
+WordPress PHP library that delivers plugin updates from **GitHub releases**. Uses Composer for autoloading and ships an `init.php` single entry point. Targets PHP 7.4+, WordPress 6.0+, MIT.
 
 ## Setup
 
