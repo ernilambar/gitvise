@@ -14,12 +14,12 @@ composer install
 
 ```bash
 composer install        # Install dependencies
-phpunit                 # Run tests (bootstrap: tests/bootstrap.php)
-composer lint           # PHPCS scan (WordPress + NilambarCodingStandard)
+composer test           # PHPUnit (bootstrap: tests/bootstrap.php)
+composer lint           # Runs lint-php then phpcs
+composer lint-php       # PHP syntax check only (parallel-lint)
+composer phpcs          # PHPCS scan only (WordPress + NilambarCodingStandard)
 composer format         # PHPCBF auto-fix (run BEFORE lint)
 ```
-
-No build step, no typecheck, no frontend tooling.
 
 ## Conventions
 
@@ -36,7 +36,7 @@ Run in this order; **all must exit 0** before declaring a task complete:
 ```bash
 composer format
 composer lint
-phpunit
+composer test
 ```
 
 If any step fails, fix the issue and re-run from that step.
